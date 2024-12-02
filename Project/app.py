@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, send_file
 import os
+import secrets
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 from PyPDF2 import PdfReader, PdfWriter
 import psutil
 import time
 from concurrent.futures import ThreadPoolExecutor
+
 app = Flask(__name__)
 
 def aes_encrypt_butterfly(plaintext, key):
@@ -55,13 +57,9 @@ def encrypt_pdf_route():
     if 'pdf_file' not in request.files:
         return "No file uploaded!", 400
     file = request.files['pdf_file']
-    key_input = request.form['key']
-
-    if len(key_input) != 16:
-        return "Error: Key must be exactly 16 bytes.", 400
-
-    key = key_input.encode()
-
+    
+    key = secrets.token_bytes(16)
+    
     input_pdf = os.path.join("uploads", file.filename)
     file.save(input_pdf)
 
@@ -90,7 +88,6 @@ def encrypt_pdf_route():
                            battery_percent=battery_percent,
                            encrypted_pdf_butterfly=output_pdf_butterfly,
                            encrypted_pdf_time=output_pdf_time)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
