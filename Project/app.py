@@ -58,7 +58,7 @@ def encrypt_pdf_route():
         return "No file uploaded!", 400
     file = request.files['pdf_file']
     
-    key = secrets.token_bytes(16)
+    key = secrets.token_bytes(16) #csprng menggunakan library secrets sejumlah 16 bytes
     
     input_pdf = os.path.join("uploads", file.filename)
     file.save(input_pdf)
