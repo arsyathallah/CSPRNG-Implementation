@@ -1,70 +1,170 @@
+<!-- templates/result.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Encryption Result</title>
+    <title>Encryption Comparison Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-    <h1>Encryption Results</h1>
-    <h3>Comparison of AES Algorithms</h3>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Current Run Results -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h1 class="text-2xl font-bold mb-6">Current Run Results</h1>
+            
+            <div class="grid grid-cols-2 gap-8 mb-8">
+                <!-- Butterfly-based AES -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold mb-3">Butterfly-based AES</h2>
+                    <p class="text-sm text-gray-600">
+                        Encryption Time: <span class="font-medium">{{ "%.6f"|format(butterfly_time) }} seconds</span>
+                    </p>
+                    <a href="{{ butterfly_pdf }}" download class="mt-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Download Encrypted PDF
+                    </a>
+                </div>
 
-    <p>Encryption Time (in seconds):</p>
-    <canvas id="encryptionTimeChart" width="400" height="200"></canvas>
+                <!-- Time-based LEDE -->
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold mb-3">Time-based LEDE</h2>
+                    <p class="text-sm text-gray-600">
+                        Encryption Time: <span class="font-medium">{{ "%.6f"|format(timebased_time) }} seconds</span>
+                    </p>
+                    <a href="{{ timebased_pdf }}" download class="mt-4 inline-block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Download Encrypted PDF
+                    </a>
+                </div>
+            </div>
+        </div>
 
-    <p>CPU Usage (%) during encryption:</p>
-    <canvas id="cpuUsageChart" width="400" height="200"></canvas>
+        <!-- Historical Performance Charts -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-6">Historical Performance</h2>
+            
+            <!-- Encryption Time Comparison Chart -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4">Encryption Time Comparison</h3>
+                <canvas id="timeComparisonChart" height="300"></canvas>
+            </div>
 
-    <p>Battery Usage (%): {{ battery_percent }}</p>
+            <!-- Resource Usage Chart -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4">Resource Usage History</h3>
+                <canvas id="resourceUsageChart" height="300"></canvas>
+            </div>
 
-    <p>Encrypted PDF with Butterfly-Based AES: <a href="{{ encrypted_pdf_butterfly }}" download>Download</a></p>
-    <p>Encrypted PDF with Time-Based AES: <a href="{{ encrypted_pdf_time }}" download>Download</a></p>
+            <!-- Efficiency Gain Chart -->
+            <div>
+                <h3 class="text-lg font-semibold mb-4">Efficiency Gain vs File Size</h3>
+                <canvas id="efficiencyChart" height="300"></canvas>
+            </div>
+        </div>
+
+        <div>
+            <a href="/" class="text-blue-500 hover:underline">← Encrypt Another File</a>
+        </div>
+    </div>
 
     <script>
-        var encryptionTimeData = {
-            labels: ['Time-Based AES', 'Butterfly-Based AES'],
-            datasets: [{
-                label: 'Encryption Time (in seconds)',
-                data: [{{ encryption_time_time_based }}, {{ encryption_time_butterfly_based }}],
-                backgroundColor: ['rgba(255, 99, 132, 0.2)', 'rgba(54, 162, 235, 0.2)'],
-                borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)'],
-                borderWidth: 1
-            }]
-        };
+        // Parse the run history data
+        const runs = {{ all_runs|tojson|safe }};
+        
+        // Prepare data for charts
+        const labels = runs.map(run => run.timestamp);
+        const butterflyTimes = runs.map(run => run.butterfly_time);
+        const ledeTimes = runs.map(run => run.lede_time);
+        const cpuUsage = runs.map(run => run.cpu_usage);
+        const memoryUsage = runs.map(run => run.memory_usage);
+        const fileSizes = runs.map(run => run.file_size);
+        const efficiencyGains = runs.map(run => run.efficiency_gain);
 
-        var cpuUsageData = {
-            labels: ['Time-Based AES', 'Butterfly-Based AES'],
-            datasets: [{
-                label: 'CPU Usage (%)',
-                data: [{{ cpu_usage_time_based }}, {{ cpu_usage_butterfly_based }}],
-                backgroundColor: ['rgba(153, 102, 255, 0.2)', 'rgba(255, 159, 64, 0.2)'],
-                borderColor: ['rgba(153, 102, 255, 1)', 'rgba(255, 159, 64, 1)'],
-                borderWidth: 1
-            }]
-        };
-
-        var ctx1 = document.getElementById('encryptionTimeChart').getContext('2d');
-        var encryptionTimeChart = new Chart(ctx1, {
-            type: 'bar',
-            data: encryptionTimeData,
+        // Time Comparison Chart
+        new Chart(document.getElementById('timeComparisonChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Butterfly-based AES',
+                    data: butterflyTimes,
+                    borderColor: 'rgb(79, 70, 229)',
+                    tension: 0.1
+                }, {
+                    label: 'Time-based LEDE',
+                    data: ledeTimes,
+                    borderColor: 'rgb(16, 185, 129)',
+                    tension: 0.1
+                }]
+            },
             options: {
+                responsive: true,
                 scales: {
-                    y: { 
-                        beginAtZero: true 
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Time (seconds)'
+                        }
                     }
                 }
             }
         });
 
-        var ctx2 = document.getElementById('cpuUsageChart').getContext('2d');
-        var cpuUsageChart = new Chart(ctx2, {
-            type: 'bar',
-            data: cpuUsageData,
+        // Resource Usage Chart
+        new Chart(document.getElementById('resourceUsageChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'CPU Usage (%)',
+                    data: cpuUsage,
+                    borderColor: 'rgb(239, 68, 68)',
+                    tension: 0.1
+                }, {
+                    label: 'Memory Usage (%)',
+                    data: memoryUsage,
+                    borderColor: 'rgb(245, 158, 11)',
+                    tension: 0.1
+                }]
+            },
             options: {
+                responsive: true,
                 scales: {
-                    y: { 
-                        beginAtZero: true 
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Usage (%)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Efficiency vs File Size Chart
+        new Chart(document.getElementById('efficiencyChart'), {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Efficiency Gain vs File Size',
+                    data: fileSizes.map((size, i) => ({
+                        x: size,
+                        y: efficiencyGains[i]
+                    })),
+                    backgroundColor: 'rgb(99, 102, 241)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'File Size (KB)'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Efficiency Gain (%)'
+                        }
                     }
                 }
             }
